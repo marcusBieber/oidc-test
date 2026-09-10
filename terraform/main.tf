@@ -6,14 +6,6 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 6.0"
     }
-  }
-  
-  backend "s3" {
-    bucket       = "marcus-terraform-state-798836978111"
-    key          = "oidc-test/terraform.tfstate"
-    region       = "eu-central-1"
-    encrypt      = true
-    use_lockfile = true
   } 
 }
 
