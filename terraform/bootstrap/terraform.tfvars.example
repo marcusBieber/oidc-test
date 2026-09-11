@@ -1,0 +1,21 @@
+# Beispielwerte für die Trust-Policy der GitHub-OIDC-Rolle.
+# Kopieren nach "terraform.tfvars" (wird von .gitignore ignoriert) und
+# an das jeweilige Repo anpassen - oder bootstrap.sh die Werte automatisch
+# per GitHub CLI ermitteln lassen.
+
+# --- GitHub.com Beispiel (Immutable Subject Claims) ---
+# github_owner             = "marcusBieber"
+# github_repo              = "oidc-test"
+# github_branch            = "main"
+# github_owner_id          = 180164030
+# github_repo_id           = 1361295306
+# github_oidc_provider_url = "https://token.actions.githubusercontent.com"
+
+# --- GitHub Enterprise Server Beispiel ---
+# github_owner             = "marcusBieber"
+# github_repo              = "oidc-test"
+# github_branch            = "main"
+# github_owner_id          = null
+# github_repo_id           = null
+# github_repo_id_ghes      = 42
+# github_oidc_provider_url = "https://ghes.example.com/_services/token"

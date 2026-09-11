@@ -22,22 +22,35 @@ variable "github_branch" {
   default     = "main"
 }
 
-# Nur relevant für GitHub.com mit Immutable Subject Claims.
-# Bei GitHub Enterprise Server einfach null lassen.
+# GitHub.com und GHES verwenden unterschiedliche Mechanismen, um das
+# Namens-Recycling-Risiko (gelöschtes/umbenanntes Repo, Name wird neu
+# vergeben) in der Trust-Policy abzudecken. Konkrete Werte gehören in eine
+# lokale, nicht eingecheckte terraform.tfvars (siehe terraform.tfvars.example)
+# oder werden von bootstrap.sh automatisch per GitHub CLI ermittelt.
+#
+# GitHub.com (Immutable Subject Claims): github_owner_id + github_repo_id setzen.
+# GitHub Enterprise Server: beide auf null lassen und stattdessen
+# github_repo_id_ghes befüllen.
 variable "github_owner_id" {
   description = "Immutable Owner-ID (nur GitHub.com, nicht bei GHES verfügbar)"
   type        = string
-  default     = 180164030  #null
+  default     = null
 }
 
 variable "github_repo_id" {
   description = "Immutable Repo-ID (nur GitHub.com, nicht bei GHES verfügbar)"
   type        = string
-  default     = 1361295306  #null
+  default     = null
 }
 
 variable "github_repo_id_ghes" {
   description = "Repository-ID des GHES-Repos (für zusätzliche repository_id-Bedingung, verhindert Namens-Recycling-Risiko)"
   type        = string
   default     = null
+}
+
+variable "github_oidc_provider_url" {
+  description = "OIDC-Token-Endpunkt des GitHub-Actions-Anbieters. gh.com: https://token.actions.githubusercontent.com. GHES: https://<ghes-host>/_services/token (Pfad je nach GHES-Konfiguration prüfen)."
+  type        = string
+  default     = "https://token.actions.githubusercontent.com"
 }

@@ -13,8 +13,52 @@ cleanup() {
 
 trap cleanup EXIT
 
+require_command() {
+  if ! command -v "$1" >/dev/null 2>&1; then
+    echo "FEHLER: '$1' ist nicht installiert oder nicht im PATH."
+    exit 1
+  fi
+}
+
+detect_github_oidc_vars() {
+  echo "Ermittle GitHub-Repository-Informationen (gh.com vs. GHES)..."
+
+  require_command gh
+
+  local repo_nwo repo_host repo_id owner_id
+
+  repo_nwo=$(gh repo view --json nameWithOwner --jq '.nameWithOwner')
+  repo_host=$(gh repo view --json url --jq '.url' | awk -F/ '{print $3}')
+
+  export TF_VAR_github_owner="${repo_nwo%%/*}"
+  export TF_VAR_github_repo="${repo_nwo##*/}"
+
+  repo_id=$(gh api "repos/${repo_nwo}" --jq '.id')
+
+  if [[ "${repo_host}" == "github.com" ]]; then
+    owner_id=$(gh api "repos/${repo_nwo}" --jq '.owner.id')
+
+    echo "github.com erkannt (Owner-ID=${owner_id}, Repo-ID=${repo_id})."
+
+    export TF_VAR_github_owner_id="${owner_id}"
+    export TF_VAR_github_repo_id="${repo_id}"
+    unset TF_VAR_github_repo_id_ghes
+    export TF_VAR_github_oidc_provider_url="https://token.actions.githubusercontent.com"
+  else
+    echo "GitHub Enterprise Server erkannt (Host=${repo_host}, Repo-ID=${repo_id})."
+    echo "Hinweis: Pfad des OIDC-Token-Endpunkts ggf. an eure GHES-Konfiguration anpassen."
+
+    unset TF_VAR_github_owner_id
+    unset TF_VAR_github_repo_id
+    export TF_VAR_github_repo_id_ghes="${repo_id}"
+    export TF_VAR_github_oidc_provider_url="https://${repo_host}/_services/token"
+  fi
+}
+
 echo "Prüfe AWS Identität..."
 aws sts get-caller-identity
+
+detect_github_oidc_vars
 
 echo "Prüfe Bootstrap-State-Bucket..."
 

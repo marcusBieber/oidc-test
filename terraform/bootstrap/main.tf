@@ -14,7 +14,7 @@ provider "aws" {
 }
 
 resource "aws_iam_openid_connect_provider" "github" {
-  url = "https://token.actions.githubusercontent.com"
+  url = var.github_oidc_provider_url
 
   client_id_list = [
     "sts.amazonaws.com"
@@ -22,6 +22,11 @@ resource "aws_iam_openid_connect_provider" "github" {
 }
 
 locals {
+  # AWS benennt die Condition-Keys im Trust-Dokument nach dem Host des
+  # registrierten OIDC-Providers (ohne Schema) - muss daher bei GHES
+  # (abweichender Host) mitwandern, sonst greift die Condition nie.
+  oidc_condition_namespace = replace(var.github_oidc_provider_url, "https://", "")
+
   github_owner_part = var.github_owner_id != null ? "${var.github_owner}@${var.github_owner_id}" : var.github_owner
   github_repo_part  = var.github_repo_id != null ? "${var.github_repo}@${var.github_repo_id}" : var.github_repo
 }
@@ -41,13 +46,13 @@ data "aws_iam_policy_document" "github_oidc_trust" {
 
     condition {
       test     = "StringEquals"
-      variable = "token.actions.githubusercontent.com:aud"
+      variable = "${local.oidc_condition_namespace}:aud"
       values   = ["sts.amazonaws.com"]
     }
 
     condition {
       test     = "StringEquals"
-      variable = "token.actions.githubusercontent.com:sub"
+      variable = "${local.oidc_condition_namespace}:sub"
       values   = ["repo:${local.github_owner_part}/${local.github_repo_part}:ref:refs/heads/${var.github_branch}"]
     }
 
@@ -56,7 +61,7 @@ data "aws_iam_policy_document" "github_oidc_trust" {
 
       content {
         test     = "StringEquals"
-        variable = "token.actions.githubusercontent.com:repository_id"
+        variable = "${local.oidc_condition_namespace}:repository_id"
         values   = [condition.value]
       }
     }
