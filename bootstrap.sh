@@ -3,8 +3,15 @@
 set -euo pipefail
 
 BOOTSTRAP_BUCKET="marcus-bootstrap-tfstate-798836978111"
+ENABLE_VERSIONING="true"
 REGION="eu-central-1"
 BOOTSTRAP_DIR="terraform/bootstrap"
+
+cleanup() {
+  [[ -f "${BOOTSTRAP_DIR}/tfplan" ]] && rm -f "${BOOTSTRAP_DIR}/tfplan"
+}
+
+trap cleanup EXIT
 
 echo "Prüfe AWS Identität..."
 aws sts get-caller-identity
@@ -22,9 +29,17 @@ else
     --create-bucket-configuration LocationConstraint="${REGION}"
 
   echo "Aktiviere Versioning..."
+  if [ "${ENABLE_VERSIONING}" = "true" ]; then
+  echo "Aktiviere Versioning..."
   aws s3api put-bucket-versioning \
     --bucket "${BOOTSTRAP_BUCKET}" \
     --versioning-configuration Status=Enabled
+  else
+  echo "Setze Versioning auf Suspended..."
+  aws s3api put-bucket-versioning \
+    --bucket "${BOOTSTRAP_BUCKET}" \
+    --versioning-configuration Status=Suspended
+  fi
 
   echo "Aktiviere SSE-S3 Verschlüsselung..."
   aws s3api put-bucket-encryption \

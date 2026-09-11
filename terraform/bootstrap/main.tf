@@ -21,6 +21,11 @@ resource "aws_iam_openid_connect_provider" "github" {
   ]
 }
 
+locals {
+  github_owner_part = var.github_owner_id != null ? "${var.github_owner}@${var.github_owner_id}" : var.github_owner
+  github_repo_part  = var.github_repo_id != null ? "${var.github_repo}@${var.github_repo_id}" : var.github_repo
+}
+
 data "aws_iam_policy_document" "github_oidc_trust" {
   statement {
     effect = "Allow"
@@ -30,29 +35,30 @@ data "aws_iam_policy_document" "github_oidc_trust" {
     ]
 
     principals {
-      type = "Federated"
-
-      identifiers = [
-        aws_iam_openid_connect_provider.github.arn
-      ]
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.github.arn]
     }
 
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:aud"
-
-      values = [
-        "sts.amazonaws.com"
-      ]
+      values   = ["sts.amazonaws.com"]
     }
 
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:${local.github_owner_part}/${local.github_repo_part}:ref:refs/heads/${var.github_branch}"]
+    }
 
-      values = [
-        "repo:marcusBieber@180164030/oidc-test@1361295306:ref:refs/heads/main"
-      ]
+    dynamic "condition" {
+      for_each = var.github_repo_id_ghes != null ? [var.github_repo_id_ghes] : []
+
+      content {
+        test     = "StringEquals"
+        variable = "token.actions.githubusercontent.com:repository_id"
+        values   = [condition.value]
+      }
     }
   }
 }
@@ -83,7 +89,7 @@ resource "aws_s3_bucket_versioning" "infrastructure_state" {
   bucket = aws_s3_bucket.infrastructure_state.id
 
   versioning_configuration {
-    status = "Enabled"
+    status = var.enable_versioning ? "Enabled" : "Suspended"
   }
 }
 
@@ -105,5 +111,3 @@ resource "aws_s3_bucket_public_access_block" "infrastructure_state" {
   ignore_public_acls      = true
   restrict_public_buckets = true
 }
-
-
