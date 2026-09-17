@@ -4,6 +4,16 @@ variable "enable_versioning" {
   default     = true
 }
 
+variable "environment" {
+  description = "Environment/Account, für den dieser Bootstrap-Lauf ausgeführt wird (bestimmt u.a. den Namen des Infrastructure-State-Buckets)"
+  type        = string
+
+  validation {
+    condition     = contains(["dev", "test", "prod"], var.environment)
+    error_message = "environment muss \"dev\", \"test\" oder \"prod\" sein."
+  }
+}
+
 variable "github_owner" {
   description = "GitHub Benutzer- oder Organisationsname"
   type        = string
