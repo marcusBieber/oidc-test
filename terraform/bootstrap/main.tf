@@ -82,11 +82,12 @@ resource "aws_iam_role_policy_attachment" "s3_full_access" {
 }
 
 resource "aws_s3_bucket" "infrastructure_state" {
-  bucket = "marcus-infrastructure-tfstate-798836978111"
+  bucket = "infra_state_${var.environment}"
 
   tags = {
-    Name      = "Infrastructure Terraform State"
-    ManagedBy = "Terraform Bootstrap"
+    Name        = "Infrastructure Terraform State"
+    Environment = var.environment
+    ManagedBy   = "Terraform Bootstrap"
   }
 }
 

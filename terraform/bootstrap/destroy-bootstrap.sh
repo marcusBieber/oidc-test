@@ -2,11 +2,18 @@
 
 set -euo pipefail
 
-BOOTSTRAP_BUCKET="marcus-bootstrap-tfstate-798836978111"
-INFRASTRUCTURE_BUCKET="marcus-infrastructure-tfstate-798836978111"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "${SCRIPT_DIR}"
 
 REGION="eu-central-1"
-BOOTSTRAP_DIR="terraform/bootstrap"
+
+# Muss zu bootstrap.sh passen (gleiche Environments/Profile).
+ENVIRONMENTS=(dev test prod)
+declare -A AWS_PROFILES=(
+  [dev]="hsr_dev"
+  [test]="hsr_test"
+  [prod]="hsr_prod"
+)
 
 # --------------------------------------------------
 # Temp-Dateien zentral tracken und immer aufräumen
@@ -19,7 +26,7 @@ cleanup() {
   for f in "${TMP_FILES[@]:-}"; do
     [[ -n "${f}" && -f "${f}" ]] && rm -f "${f}"
   done
-  [[ -f "${BOOTSTRAP_DIR}/destroy.tfplan" ]] && rm -f "${BOOTSTRAP_DIR}/destroy.tfplan"
+  [[ -f "destroy.tfplan" ]] && rm -f "destroy.tfplan"
 }
 
 trap cleanup EXIT
@@ -181,6 +188,73 @@ delete_bucket_with_retry() {
 }
 
 # --------------------------------------------------
+# Destroy für eine einzelne Umgebung
+# --------------------------------------------------
+
+destroy_environment() {
+  local env="$1"
+  local profile="${AWS_PROFILES[${env}]}"
+  local infrastructure_bucket="infra_state_${env}"
+  local bootstrap_bucket="bootstrap_state_${env}"
+
+  echo
+  echo "========================================"
+  echo "Destroy: ${env} (AWS-Profil: ${profile})"
+  echo "========================================"
+
+  export AWS_PROFILE="${profile}"
+  export TF_VAR_environment="${env}"
+
+  echo "Aktuelle AWS Identität:"
+  aws sts get-caller-identity
+
+  echo
+  echo "Prüfe Infrastructure-State-Bucket..."
+
+  if bucket_exists "${infrastructure_bucket}"; then
+    echo "Infrastructure-State-Bucket existiert."
+    echo "Leere ihn vor terraform destroy..."
+    delete_all_bucket_versions "${infrastructure_bucket}"
+  else
+    echo "Infrastructure-State-Bucket existiert nicht."
+  fi
+
+  echo
+  echo "Initialisiere Bootstrap Terraform..."
+  terraform init -backend-config="envs/${env}.backend.hcl" -reconfigure
+
+  echo
+  echo "Erstelle Destroy Plan..."
+  terraform plan \
+    -destroy \
+    -out=destroy.tfplan
+
+  echo
+  echo "Zerstöre Bootstrap Ressourcen..."
+  terraform apply \
+    destroy.tfplan
+
+  rm -f destroy.tfplan
+
+  echo
+  echo "Terraform Bootstrap für ${env} wurde zerstört."
+
+  echo
+  echo "Prüfe Bootstrap-State-Bucket..."
+
+  if bucket_exists "${bootstrap_bucket}"; then
+    delete_all_bucket_versions "${bootstrap_bucket}"
+
+    echo
+    echo "Lösche Bootstrap-State-Bucket..."
+    delete_bucket_with_retry "${bootstrap_bucket}"
+    echo "Bootstrap-State-Bucket wurde gelöscht."
+  else
+    echo "Bootstrap-State-Bucket existiert nicht."
+  fi
+}
+
+# --------------------------------------------------
 # Voraussetzungen prüfen
 # --------------------------------------------------
 
@@ -189,95 +263,32 @@ require_command aws
 require_command terraform
 echo "AWS CLI und Terraform vorhanden."
 
-# --------------------------------------------------
-# AWS Identität
-# --------------------------------------------------
-
-echo
-echo "Aktuelle AWS Identität:"
-aws sts get-caller-identity
-
 echo
 echo "WARNUNG"
-echo "Dieses Skript zerstört:"
+echo "Dieses Skript zerstört für JEDE der folgenden Umgebungen (${ENVIRONMENTS[*]}):"
 echo "- GitHub OIDC Provider"
 echo "- IAM Role und zugehörige Bootstrap-Ressourcen"
 echo "- Infrastructure-State-Bucket"
 echo "- Bootstrap-State-Bucket inklusive aller Versionen"
 echo
-echo "Die eigentliche Infrastructure sollte vorher bereits zerstört worden sein."
+echo "Betroffene AWS-Profile: ${AWS_PROFILES[dev]}, ${AWS_PROFILES[test]}, ${AWS_PROFILES[prod]}"
+echo
+echo "Die eigentliche Infrastructure (terraform/hsr-*) sollte vorher bereits"
+echo "separat zerstört worden sein."
 echo
 
-read -r -p "Bootstrap wirklich vollständig löschen? (yes/no): " CONFIRM
+read -r -p "Bootstrap in ALLEN Umgebungen wirklich vollständig löschen? (yes/no): " CONFIRM
 
 if [[ "${CONFIRM}" != "yes" ]]; then
   echo "Abgebrochen."
   exit 0
 fi
 
-# --------------------------------------------------
-# Infrastructure State Bucket leeren
-#
-# Terraform kann den Bucket im nachfolgenden destroy nur
-# löschen, wenn wirklich ALLE Versionen und Delete Marker
-# vorher entfernt wurden.
-# --------------------------------------------------
-
-echo
-echo "Prüfe Infrastructure-State-Bucket..."
-
-if bucket_exists "${INFRASTRUCTURE_BUCKET}"; then
-  echo "Infrastructure-State-Bucket existiert."
-  echo "Leere ihn vor terraform destroy..."
-  delete_all_bucket_versions "${INFRASTRUCTURE_BUCKET}"
-else
-  echo "Infrastructure-State-Bucket existiert nicht."
-fi
-
-# --------------------------------------------------
-# Bootstrap Terraform destroy
-# --------------------------------------------------
-
-echo
-echo "Initialisiere Bootstrap Terraform..."
-terraform -chdir="${BOOTSTRAP_DIR}" init -reconfigure
-
-echo
-echo "Erstelle Destroy Plan..."
-terraform -chdir="${BOOTSTRAP_DIR}" plan \
-  -destroy \
-  -out=destroy.tfplan
-
-echo
-echo "Zerstöre Bootstrap Ressourcen..."
-terraform -chdir="${BOOTSTRAP_DIR}" apply \
-  destroy.tfplan
-
-echo
-echo "Terraform Bootstrap wurde zerstört."
-
-# --------------------------------------------------
-# Bootstrap State Bucket löschen
-#
-# Erst jetzt, da Terraform seinen eigenen State bis zum
-# Abschluss des destroy benötigt.
-# --------------------------------------------------
-
-echo
-echo "Prüfe Bootstrap-State-Bucket..."
-
-if bucket_exists "${BOOTSTRAP_BUCKET}"; then
-  delete_all_bucket_versions "${BOOTSTRAP_BUCKET}"
-
-  echo
-  echo "Lösche Bootstrap-State-Bucket..."
-  delete_bucket_with_retry "${BOOTSTRAP_BUCKET}"
-  echo "Bootstrap-State-Bucket wurde gelöscht."
-else
-  echo "Bootstrap-State-Bucket existiert nicht."
-fi
+for env in "${ENVIRONMENTS[@]}"; do
+  destroy_environment "${env}"
+done
 
 echo
 echo "========================================"
-echo "Bootstrap vollständig gelöscht."
+echo "Bootstrap in allen Umgebungen (${ENVIRONMENTS[*]}) vollständig gelöscht."
 echo "========================================"
