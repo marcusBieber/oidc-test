@@ -194,8 +194,8 @@ delete_bucket_with_retry() {
 destroy_environment() {
   local env="$1"
   local profile="${AWS_PROFILES[${env}]}"
-  local infrastructure_bucket="infra_state_${env}"
-  local bootstrap_bucket="bootstrap_state_${env}"
+  local infrastructure_bucket="infra-state-${env}"
+  local bootstrap_bucket="bootstrap-state-${env}"
 
   echo
   echo "========================================"
