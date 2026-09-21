@@ -1,4 +1,4 @@
-bucket       = "bootstrap_state_prod"
+bucket       = "bootstrap-state-prod"
 key          = "bootstrap/terraform.tfstate"
 region       = "eu-central-1"
 encrypt      = true

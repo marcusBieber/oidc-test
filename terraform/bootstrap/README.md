@@ -61,10 +61,10 @@ passenden Profil und der passenden Backend-Config durch.
 - `aws_s3_bucket.infrastructure_state` (+ Versioning, SSE-Verschlüsselung,
   Public-Access-Block) – der State-Bucket für die eigentliche
   Workload-Infrastruktur des jeweiligen Environments (`../hsr-<env>/`),
-  benannt `infra_state_<environment>`.
+  benannt `infra-state_<environment>`.
 
 Der State dieses Bootstrap-Schritts selbst liegt in einem separaten Bucket
-je Environment (`bootstrap_state_<environment>`, siehe `envs/*.backend.hcl`)
+je Environment (`bootstrap-state_<environment>`, siehe `envs/*.backend.hcl`)
 – getrennt vom Infrastructure-State-Bucket, damit ein `destroy` der
 Workload-Infrastruktur den Bootstrap-State nicht gefährdet.
 
@@ -91,7 +91,7 @@ Policy-Attachment und S3-Buckets im jeweiligen Account anzulegen.
 1. Eintrag in `ENVIRONMENTS` und `AWS_PROFILES` in **beiden** Skripten
    ergänzen/anpassen.
 2. Passende `envs/<environment>.backend.hcl` anlegen (Bucket-Name
-   `bootstrap_state_<environment>`, siehe vorhandene Dateien als Vorlage).
+   `bootstrap-state_<environment>`, siehe vorhandene Dateien als Vorlage).
 3. `variables.tf` → `environment`-Validierung (`contains(["dev", "test",
    "prod"], ...)`) um den neuen Namen erweitern.
 4. Passendes `../hsr-<environment>/` Workload-Verzeichnis anlegen (siehe
@@ -147,7 +147,7 @@ jeweilige Szenario (gh.com oder GHES) eintragen.
 
 | Variable | Zweck |
 |---|---|
-| `environment` | `dev`, `test` oder `prod` – bestimmt u. a. den Namen des Infrastructure-State-Buckets (`infra_state_<environment>`). Wird von den Skripten automatisch als `TF_VAR_environment` gesetzt. |
+| `environment` | `dev`, `test` oder `prod` – bestimmt u. a. den Namen des Infrastructure-State-Buckets (`infra-state_<environment>`). Wird von den Skripten automatisch als `TF_VAR_environment` gesetzt. |
 | `enable_versioning` | Versioning für den Infrastructure-State-Bucket an/aus |
 | `github_owner` | GitHub-Benutzer- oder Organisationsname |
 | `github_repo` | GitHub-Repository-Name |
@@ -191,7 +191,7 @@ cd terraform/bootstrap
    siehe oben).
 2. Läuft dann für jedes Environment (`dev`, `test`, `prod`):
    - prüft die AWS-Identität im jeweiligen Profil,
-   - legt den Bootstrap-State-Bucket (`bootstrap_state_<environment>`) an,
+   - legt den Bootstrap-State-Bucket (`bootstrap-state_<environment>`) an,
      falls er noch nicht existiert (inkl. Versioning, SSE-Verschlüsselung,
      Public-Access-Block),
    - führt `terraform init -backend-config=envs/<environment>.backend.hcl`,

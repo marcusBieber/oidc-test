@@ -69,7 +69,7 @@ detect_github_oidc_vars() {
 bootstrap_environment() {
   local env="$1"
   local profile="${AWS_PROFILES[${env}]}"
-  local bootstrap_bucket="bootstrap_state_${env}"
+  local bootstrap_bucket="bootstrap-state-${env}"
 
   echo
   echo "========================================"

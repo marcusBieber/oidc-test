@@ -7,8 +7,8 @@ provisioniert wird (Workflow `terraform-s3.yml`).
 Je AWS-Account/Environment gibt es ein eigenes Unterverzeichnis:
 
 - `hsr-dev/`, `hsr-test/`, `hsr-prod/` – identischer Inhalt, nur der
-  Backend-Bucket in `backend.tf` unterscheidet sich (`infra_state_dev`,
-  `infra_state_test`, `infra_state_prod`).
+  Backend-Bucket in `backend.tf` unterscheidet sich (`infra-state_dev`,
+  `infra-state_test`, `infra-state_prod`).
 - `bootstrap/` – das Bootstrap-Modul, siehe
   [`bootstrap/README.md`](bootstrap/README.md).
 
