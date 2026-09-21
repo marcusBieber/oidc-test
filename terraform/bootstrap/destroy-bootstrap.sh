@@ -10,9 +10,9 @@ REGION="eu-central-1"
 # Muss zu bootstrap.sh passen (gleiche Environments/Profile).
 ENVIRONMENTS=(dev test prod)
 declare -A AWS_PROFILES=(
-  [dev]="hsr_dev"
-  [test]="hsr_test"
-  [prod]="hsr_prod"
+  [dev]="hsr-1-dev"
+  [test]="hsr-1-tst"
+  [prod]="hsr-1-prd"
 )
 
 # --------------------------------------------------

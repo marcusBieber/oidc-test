@@ -13,9 +13,9 @@ ENABLE_VERSIONING="true"
 # ergänzen/anpassen und passende envs/<env>.backend.hcl anlegen.
 ENVIRONMENTS=(dev test prod)
 declare -A AWS_PROFILES=(
-  [dev]="hsr_dev"
-  [test]="hsr_test"
-  [prod]="hsr_prod"
+  [dev]="hsr-1-dev"
+  [test]="hsr-1-tst"
+  [prod]="hsr-1-prd"
 )
 
 cleanup() {
@@ -94,7 +94,7 @@ bootstrap_environment() {
       --region "${REGION}" \
       --create-bucket-configuration LocationConstraint="${REGION}"
 
-    if [ "${ENABLE_VERSIONING}" = "true" ]; then
+    if [ "${ENABLE_VERSIONING}" = "false" ]; then
       echo "Aktiviere Versioning..."
       aws s3api put-bucket-versioning \
         --bucket "${bootstrap_bucket}" \
