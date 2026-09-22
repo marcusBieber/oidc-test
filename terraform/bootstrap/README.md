@@ -61,12 +61,41 @@ passenden Profil und der passenden Backend-Config durch.
 - `aws_s3_bucket.infrastructure_state` (+ Versioning, SSE-Verschlüsselung,
   Public-Access-Block) – der State-Bucket für die eigentliche
   Workload-Infrastruktur des jeweiligen Environments (`../hsr-<env>/`),
-  benannt `infra-state_<environment>`.
+  benannt `infra-state-<environment>-<account-id>`.
 
 Der State dieses Bootstrap-Schritts selbst liegt in einem separaten Bucket
-je Environment (`bootstrap-state_<environment>`, siehe `envs/*.backend.hcl`)
-– getrennt vom Infrastructure-State-Bucket, damit ein `destroy` der
-Workload-Infrastruktur den Bootstrap-State nicht gefährdet.
+je Environment (`bootstrap-state-<environment>-<account-id>`, siehe
+`envs/*.backend.hcl`) – getrennt vom Infrastructure-State-Bucket, damit ein
+`destroy` der Workload-Infrastruktur den Bootstrap-State nicht gefährdet.
+
+### Bucket-Namen und die Account-ID
+
+S3-Bucket-Namen sind **global über alle AWS-Accounts aller Kunden**
+eindeutig, nicht nur innerhalb eurer drei Accounts. Ein Name wie
+`bootstrap-state-dev` ist generisch genug, dass er anderswo auf der Welt
+schon vergeben sein kann (`BucketAlreadyExists`). Deshalb hängen beide
+State-Bucket-Namen die AWS-Account-ID an:
+
+- `bootstrap-state-<environment>-<account-id>` – wird von `bootstrap.sh`/
+  `destroy-bootstrap.sh` zur Laufzeit ermittelt (`aws sts get-caller-identity`)
+  und beim `terraform init` per zusätzlichem `-backend-config="bucket=..."`
+  über den Wert aus `envs/<environment>.backend.hcl` gelegt (die Datei
+  selbst enthält bewusst keine `bucket`-Zeile mehr).
+- `infra-state-<environment>-<account-id>` – wird direkt in `main.tf` über
+  `data "aws_caller_identity" "current"` gebildet, Terraform kennt seine
+  eigene Account-ID also selbst.
+
+Da AWS-Account-IDs global eindeutig sind, ist dieses Namensschema
+garantiert kollisionsfrei – ganz ohne Zufalls-Suffix.
+
+**Wichtig:** `../hsr-dev/backend.tf`, `../hsr-test/backend.tf` und
+`../hsr-prod/backend.tf` referenzieren den `infra-state`-Bucket aber
+statisch (ein Verzeichnis = ein fester Account), Terraform kann dort keine
+Account-ID zur Laufzeit einsetzen. Nach dem ersten erfolgreichen Bootstrap
+je Environment müsst ihr dort einmalig die Platzhalter
+`<AWS_ACCOUNT_ID_DEV>`/`<AWS_ACCOUNT_ID_TEST>`/`<AWS_ACCOUNT_ID_PROD>` durch
+die jeweils echte Account-ID ersetzen (steht in der `aws sts
+get-caller-identity`-Ausgabe des Bootstrap-Laufs).
 
 ## Environments und AWS-Profile
 
@@ -90,8 +119,10 @@ Policy-Attachment und S3-Buckets im jeweiligen Account anzulegen.
 **Ein Environment hinzufügen, entfernen oder umbenennen:**
 1. Eintrag in `ENVIRONMENTS` und `AWS_PROFILES` in **beiden** Skripten
    ergänzen/anpassen.
-2. Passende `envs/<environment>.backend.hcl` anlegen (Bucket-Name
-   `bootstrap-state_<environment>`, siehe vorhandene Dateien als Vorlage).
+2. Passende `envs/<environment>.backend.hcl` anlegen (ohne `bucket`-Zeile,
+   siehe vorhandene Dateien als Vorlage – der Bucket-Name
+   `bootstrap-state-<environment>-<account-id>` wird von den Skripten zur
+   Laufzeit ergänzt).
 3. `variables.tf` → `environment`-Validierung (`contains(["dev", "test",
    "prod"], ...)`) um den neuen Namen erweitern.
 4. Passendes `../hsr-<environment>/` Workload-Verzeichnis anlegen (siehe
@@ -147,7 +178,7 @@ jeweilige Szenario (gh.com oder GHES) eintragen.
 
 | Variable | Zweck |
 |---|---|
-| `environment` | `dev`, `test` oder `prod` – bestimmt u. a. den Namen des Infrastructure-State-Buckets (`infra-state_<environment>`). Wird von den Skripten automatisch als `TF_VAR_environment` gesetzt. |
+| `environment` | `dev`, `test` oder `prod` – bestimmt u. a. den Namen des Infrastructure-State-Buckets (`infra-state-<environment>-<account-id>`). Wird von den Skripten automatisch als `TF_VAR_environment` gesetzt. |
 | `enable_versioning` | Versioning für den Infrastructure-State-Bucket an/aus |
 | `github_owner` | GitHub-Benutzer- oder Organisationsname |
 | `github_repo` | GitHub-Repository-Name |
@@ -190,11 +221,13 @@ cd terraform/bootstrap
 1. Ermittelt einmalig per GitHub CLI die GitHub-Variablen (owner/repo/host,
    siehe oben).
 2. Läuft dann für jedes Environment (`dev`, `test`, `prod`):
-   - prüft die AWS-Identität im jeweiligen Profil,
-   - legt den Bootstrap-State-Bucket (`bootstrap-state_<environment>`) an,
-     falls er noch nicht existiert (inkl. Versioning, SSE-Verschlüsselung,
+   - prüft die AWS-Identität im jeweiligen Profil und ermittelt die
+     Account-ID,
+   - legt den Bootstrap-State-Bucket (`bootstrap-state-<environment>-<account-id>`)
+     an, falls er noch nicht existiert (inkl. Versioning, SSE-Verschlüsselung,
      Public-Access-Block),
-   - führt `terraform init -backend-config=envs/<environment>.backend.hcl`,
+   - führt `terraform init -backend-config=envs/<environment>.backend.hcl
+     -backend-config="bucket=bootstrap-state-<environment>-<account-id>"`,
      `validate`, `plan` und `apply` aus.
 
 Danach sollten in **jedem** der drei AWS-Accounts der GitHub-OIDC-Provider,
@@ -218,7 +251,11 @@ komplette Schleife:
 cd terraform/bootstrap
 export AWS_PROFILE=hsr_dev
 export TF_VAR_environment=dev
-terraform init -backend-config=envs/dev.backend.hcl -reconfigure
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+terraform init \
+  -backend-config=envs/dev.backend.hcl \
+  -backend-config="bucket=bootstrap-state-dev-${ACCOUNT_ID}" \
+  -reconfigure
 terraform plan
 terraform apply
 ```

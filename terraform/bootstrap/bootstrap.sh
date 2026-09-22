@@ -69,7 +69,6 @@ detect_github_oidc_vars() {
 bootstrap_environment() {
   local env="$1"
   local profile="${AWS_PROFILES[${env}]}"
-  local bootstrap_bucket="bootstrap-state-${env}"
 
   echo
   echo "========================================"
@@ -81,6 +80,12 @@ bootstrap_environment() {
 
   echo "Prüfe AWS Identität..."
   aws sts get-caller-identity
+
+  # S3-Bucket-Namen sind global eindeutig - die Account-ID im Namen macht
+  # den Bootstrap-State-Bucket garantiert kollisionsfrei.
+  local account_id
+  account_id=$(aws sts get-caller-identity --query Account --output text)
+  local bootstrap_bucket="bootstrap-state-${env}-${account_id}"
 
   echo "Prüfe Bootstrap-State-Bucket..."
 
@@ -129,7 +134,10 @@ bootstrap_environment() {
   fi
 
   echo "Initialisiere Bootstrap Terraform..."
-  terraform init -backend-config="envs/${env}.backend.hcl" -reconfigure
+  terraform init \
+    -backend-config="envs/${env}.backend.hcl" \
+    -backend-config="bucket=${bootstrap_bucket}" \
+    -reconfigure
 
   echo "Validiere Bootstrap Terraform..."
   terraform validate

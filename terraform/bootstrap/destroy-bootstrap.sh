@@ -194,8 +194,6 @@ delete_bucket_with_retry() {
 destroy_environment() {
   local env="$1"
   local profile="${AWS_PROFILES[${env}]}"
-  local infrastructure_bucket="infra-state-${env}"
-  local bootstrap_bucket="bootstrap-state-${env}"
 
   echo
   echo "========================================"
@@ -207,6 +205,11 @@ destroy_environment() {
 
   echo "Aktuelle AWS Identität:"
   aws sts get-caller-identity
+
+  local account_id
+  account_id=$(aws sts get-caller-identity --query Account --output text)
+  local infrastructure_bucket="infra-state-${env}-${account_id}"
+  local bootstrap_bucket="bootstrap-state-${env}-${account_id}"
 
   echo
   echo "Prüfe Infrastructure-State-Bucket..."
@@ -221,7 +224,10 @@ destroy_environment() {
 
   echo
   echo "Initialisiere Bootstrap Terraform..."
-  terraform init -backend-config="envs/${env}.backend.hcl" -reconfigure
+  terraform init \
+    -backend-config="envs/${env}.backend.hcl" \
+    -backend-config="bucket=${bootstrap_bucket}" \
+    -reconfigure
 
   echo
   echo "Erstelle Destroy Plan..."
