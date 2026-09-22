@@ -13,6 +13,8 @@ provider "aws" {
   region = "eu-central-1"
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_iam_openid_connect_provider" "github" {
   url = var.github_oidc_provider_url
 
@@ -82,7 +84,10 @@ resource "aws_iam_role_policy_attachment" "s3_full_access" {
 }
 
 resource "aws_s3_bucket" "infrastructure_state" {
-  bucket = "infra-state-${var.environment}"
+  # S3-Bucket-Namen sind global über alle AWS-Accounts eindeutig - die
+  # Account-ID im Namen macht die Kollision mit einem fremden Bucket
+  # praktisch ausgeschlossen, ohne auf Zufalls-Suffixe angewiesen zu sein.
+  bucket = "infra-state-${var.environment}-${data.aws_caller_identity.current.account_id}"
 
   tags = {
     Name        = "Infrastructure Terraform State"
