@@ -17,17 +17,17 @@ jobs:
         include:
           - environment: dev
             working-directory: terraform/hsr-dev
-            role-to-assume: arn:aws:iam::798836978111:role/github-oidc-test
+            role-to-assume: arn:aws:iam::021541384408:role/github-oidc-test
           - environment: test
             working-directory: terraform/hsr-test
             # TODO: ARN durch die tatsächliche Rolle im hsr_test-Account ersetzen,
             # sobald terraform/bootstrap dort gelaufen ist.
-            role-to-assume: arn:aws:iam::<AWS_ACCOUNT_ID_TEST>:role/github-oidc-test
+            role-to-assume: arn:aws:iam::497677369613:role/github-oidc-test
           - environment: prod
             working-directory: terraform/hsr-prod
             # TODO: ARN durch die tatsächliche Rolle im hsr_prod-Account ersetzen,
             # sobald terraform/bootstrap dort gelaufen ist.
-            role-to-assume: arn:aws:iam::<AWS_ACCOUNT_ID_PROD>:role/github-oidc-test
+            role-to-assume: arn:aws:iam::653011867588:role/github-oidc-test
 
     defaults:
       run:
