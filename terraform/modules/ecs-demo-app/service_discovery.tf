@@ -19,9 +19,7 @@ resource "aws_service_discovery_service" "redis" {
     }
   }
 
-  health_check_custom_config {
-    failure_threshold = 1
-  }
+  health_check_custom_config {}
 }
 
 resource "aws_service_discovery_service" "yelb_db" {
@@ -36,9 +34,7 @@ resource "aws_service_discovery_service" "yelb_db" {
     }
   }
 
-  health_check_custom_config {
-    failure_threshold = 1
-  }
+  health_check_custom_config {}
 }
 
 resource "aws_service_discovery_service" "yelb_appserver" {
@@ -53,7 +49,5 @@ resource "aws_service_discovery_service" "yelb_appserver" {
     }
   }
 
-  health_check_custom_config {
-    failure_threshold = 1
-  }
+  health_check_custom_config {}
 }
