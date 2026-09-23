@@ -24,7 +24,7 @@ Checkliste, was wann auszufüllen ist:
 
 | Reihenfolge | Datei(en) | Platzhalter | Wann bekannt |
 |---|---|---|---|
-| 1 | `bootstrap.sh`, `destroy-bootstrap.sh` (`AWS_PROFILES`) | `<aws-profile-dev>` / `-test` / `-prod` | Vorher – eure lokalen AWS-Profilnamen (`~/.aws/config`) |
+| 1 | `bootstrap.sh`, `destroy-bootstrap.sh` (`AWS_PROFILES`) | `<aws-profile-dev>` / `-test` / `-prod` | Vorher – lokale AWS-Profilnamen (`~/.aws/config`) |
 | 2 (optional) | `terraform.tfvars` (aus `terraform.tfvars.example` kopiert) | `<github-owner>`, `<github-repo>`, `<owner-id>`, `<repo-id>` | Vorher – nur nötig, falls `gh` nicht verfügbar ist, siehe [Automatische Ermittlung](#automatische-ermittlung) |
 | 3 | `../hsr-dev/backend.tf`, `../hsr-test/backend.tf`, `../hsr-prod/backend.tf` | `<AWS_ACCOUNT_ID_DEV>` / `_TEST` / `_PROD` | **Nach** dem jeweiligen Bootstrap-Lauf – die Account-ID steht in der `aws sts get-caller-identity`-Ausgabe des Laufs |
 | 4 | `../../.github/workflows/terraform-s3.yml`, `../../.github/workflows/test-oidc.yml` | dieselben Account-ID-Platzhalter (als Teil der Rollen-ARN) | Nach dem Bootstrap, sobald die IAM-Rolle im jeweiligen Account existiert |
@@ -53,7 +53,7 @@ terraform/bootstrap/
 ohne Werte) – die konkreten Backend-Werte (Bucket, Key, Region, ...) kommen
 pro Environment aus `envs/<environment>.backend.hcl` und werden beim
 `terraform init` per `-backend-config=` übergeben. So läuft dasselbe
-Terraform-Verzeichnis nacheinander gegen drei getrennte States, ohne
+Terraform-Verzeichnis nacheinander gegen X getrennte States, ohne
 Code-Duplizierung.
 
 `bootstrap.sh` und `destroy-bootstrap.sh` iterieren dafür über ein
@@ -85,8 +85,8 @@ je Environment (`bootstrap-state-<environment>-<account-id>`, siehe
 
 ### Bucket-Namen und die Account-ID
 
-S3-Bucket-Namen sind **global über alle AWS-Accounts aller Kunden**
-eindeutig, nicht nur innerhalb eurer drei Accounts. Ein Name wie
+S3-Bucket-Namen sind **global über alle AWS-Accounts**
+eindeutig, nicht nur innerhalb der X Accounts. Ein Name wie
 `bootstrap-state-dev` ist generisch genug, dass er anderswo auf der Welt
 schon vergeben sein kann (`BucketAlreadyExists`). Deshalb hängen beide
 State-Bucket-Namen die AWS-Account-ID an:
@@ -107,9 +107,9 @@ garantiert kollisionsfrei – ganz ohne Zufalls-Suffix.
 `../hsr-prod/backend.tf` referenzieren den `infra-state`-Bucket aber
 statisch (ein Verzeichnis = ein fester Account), Terraform kann dort keine
 Account-ID zur Laufzeit einsetzen. Nach dem ersten erfolgreichen Bootstrap
-je Environment müsst ihr dort einmalig die Platzhalter
+(oder auch davor, wenn bekannt) je Environment müssen dort einmalig die Platzhalter
 `<AWS_ACCOUNT_ID_DEV>`/`<AWS_ACCOUNT_ID_TEST>`/`<AWS_ACCOUNT_ID_PROD>` durch
-die jeweils echte Account-ID ersetzen (steht in der `aws sts
+die jeweils echte Account-ID ersetzt (steht in der `aws sts
 get-caller-identity`-Ausgabe des Bootstrap-Laufs).
 
 ## Environments und AWS-Profile
@@ -127,7 +127,7 @@ declare -A AWS_PROFILES=(
 )
 ```
 
-**Vor der ersten Nutzung ausfüllen:** die drei Platzhalter durch eure
+**Vor der ersten Nutzung ausfüllen:** die drei Platzhalter durch die
 tatsächlichen lokalen AWS-Profilnamen ersetzen (siehe
 [Voraussetzungen](#voraussetzungen)).
 
@@ -183,7 +183,7 @@ Environments identisch sind, gilt diese Konfiguration environment-übergreifend.
 (`gh repo view`, `gh api`), ob gegen GitHub.com oder GHES gearbeitet wird,
 und exportiert die passenden Werte als `TF_VAR_github_*`-Umgebungsvariablen
 (einmalig, unabhängig vom Environment/AWS-Profil, da Repo und Host für alle
-drei Bootstrap-Läufe identisch sind). Terraform liest diese automatisch ein
+Bootstrap-Läufe identisch sind). Terraform liest diese automatisch ein
 – im Regelfall muss also keine der folgenden Dateien angefasst werden.
 
 ### Manuelle Konfiguration (Fallback)
@@ -249,12 +249,12 @@ cd terraform/bootstrap
      -backend-config="bucket=bootstrap-state-<environment>-<account-id>"`,
      `validate`, `plan` und `apply` aus.
 
-Danach sollten in **jedem** der drei AWS-Accounts der GitHub-OIDC-Provider,
+Danach sollten in **jedem** der X AWS-Accounts der GitHub-OIDC-Provider,
 die IAM-Rolle (`github-oidc-test`) und der zugehörige
 Infrastructure-State-Bucket existieren.
 
 `destroy-bootstrap.sh` räumt analog alles wieder ab – fragt vor dem ersten
-Löschen eine einzige Bestätigung (`yes`) für **alle drei** Environments ab.
+Löschen eine einzige Bestätigung (`yes`) für **alle X** Environments ab.
 
 **Wichtig:** Die eigentliche Workload-Infrastruktur (`../hsr-dev/`,
 `../hsr-test/`, `../hsr-prod/`) sollte vorher bereits separat zerstört sein,

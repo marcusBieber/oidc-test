@@ -49,4 +49,5 @@ Beide sind manuell auslösbar (`workflow_dispatch`) und benötigen
 - **`test-oidc.yml`** – übernimmt die Rolle `github-oidc-test` und ruft
   `aws sts get-caller-identity` auf. Reiner Verbindungstest ohne Terraform.
 - **`terraform-s3.yml`** – führt Terraform in `terraform/hsr-dev`,
-  `hsr-test` und `hsr-prod` aus (Matrix über alle drei Environments).
+  `hsr-test` und `hsr-prod` aus und deployed ein Testressource
+  (Matrix über alle drei Environments).
