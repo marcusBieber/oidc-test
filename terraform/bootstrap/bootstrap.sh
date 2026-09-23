@@ -6,7 +6,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
 
 REGION="eu-central-1"
-ENABLE_VERSIONING="true"
+ENABLE_VERSIONING="false"
 
 # Environments, die gebootstrappt werden, und das jeweilige lokale
 # AWS-Profil. Neue Umgebung hinzufügen/entfernen/umbenennen: Eintrag hier
@@ -99,7 +99,7 @@ bootstrap_environment() {
       --region "${REGION}" \
       --create-bucket-configuration LocationConstraint="${REGION}"
 
-    if [ "${ENABLE_VERSIONING}" = "false" ]; then
+    if [ "${ENABLE_VERSIONING}" = "true" ]; then
       echo "Aktiviere Versioning..."
       aws s3api put-bucket-versioning \
         --bucket "${bootstrap_bucket}" \
