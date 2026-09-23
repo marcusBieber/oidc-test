@@ -11,11 +11,11 @@ ENABLE_VERSIONING="true"
 # Environments, die gebootstrappt werden, und das jeweilige lokale
 # AWS-Profil. Neue Umgebung hinzufügen/entfernen/umbenennen: Eintrag hier
 # ergänzen/anpassen und passende envs/<env>.backend.hcl anlegen.
-ENVIRONMENTS=(dev test prod)
+ENVIRONMENTS=(dev ) #test prod)
 declare -A AWS_PROFILES=(
-  [dev]="hsr-1-dev"
-  [test]="hsr-1-tst"
-  [prod]="hsr-1-prd"
+  [dev]="mbieber" #hsr-1-dev"
+#  [test]="hsr-1-tst"
+#  [prod]="hsr-1-prd"
 )
 
 cleanup() {
@@ -79,7 +79,21 @@ bootstrap_environment() {
   export TF_VAR_environment="${env}"
 
   echo "Prüfe AWS Identität..."
-  aws sts get-caller-identity
+    if ! aws sts get-caller-identity >/dev/null 2>&1; then
+    echo "AWS Credentials ungültig oder abgelaufen."
+    echo "Starte AWS SSO Login für Profil: ${profile}"
+
+    aws sso login --profile "${profile}"
+
+    echo "Prüfe AWS Identität erneut..."
+
+    if ! aws sts get-caller-identity; then
+      echo "FEHLER: AWS Login war nicht erfolgreich."
+      return 1
+    fi
+  else
+    aws sts get-caller-identity
+  fi
 
   # S3-Bucket-Namen sind global eindeutig - die Account-ID im Namen macht
   # den Bootstrap-State-Bucket garantiert kollisionsfrei.
