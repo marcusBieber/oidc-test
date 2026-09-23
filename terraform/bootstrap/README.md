@@ -17,6 +17,21 @@ Account bekommt dieselbe Bootstrap-Konfiguration, aber mit eigenem
 OIDC-Provider, eigener IAM-Rolle und eigenen State-Buckets – vollständig
 isoliert voneinander (kein gemeinsamer State, kein gemeinsamer Account).
 
+## Platzhalter, die vor der Nutzung ausgefüllt werden müssen
+
+Dieses Repo ist als Vorlage gedacht und enthält daher keine echten Namen/IDs.
+Checkliste, was wann auszufüllen ist:
+
+| Reihenfolge | Datei(en) | Platzhalter | Wann bekannt |
+|---|---|---|---|
+| 1 | `bootstrap.sh`, `destroy-bootstrap.sh` (`AWS_PROFILES`) | `<aws-profile-dev>` / `-test` / `-prod` | Vorher – eure lokalen AWS-Profilnamen (`~/.aws/config`) |
+| 2 (optional) | `terraform.tfvars` (aus `terraform.tfvars.example` kopiert) | `<github-owner>`, `<github-repo>`, `<owner-id>`, `<repo-id>` | Vorher – nur nötig, falls `gh` nicht verfügbar ist, siehe [Automatische Ermittlung](#automatische-ermittlung) |
+| 3 | `../hsr-dev/backend.tf`, `../hsr-test/backend.tf`, `../hsr-prod/backend.tf` | `<AWS_ACCOUNT_ID_DEV>` / `_TEST` / `_PROD` | **Nach** dem jeweiligen Bootstrap-Lauf – die Account-ID steht in der `aws sts get-caller-identity`-Ausgabe des Laufs |
+| 4 | `../../.github/workflows/terraform-s3.yml`, `../../.github/workflows/test-oidc.yml` | dieselben Account-ID-Platzhalter (als Teil der Rollen-ARN) | Nach dem Bootstrap, sobald die IAM-Rolle im jeweiligen Account existiert |
+
+Schritt 1 ist zwingend vor dem ersten `bootstrap.sh`-Lauf nötig, Schritt 3+4
+erst danach (die Accounts/Rollen müssen ja erst existieren).
+
 ## Aufbau / Funktionsweise
 
 Das Verzeichnis wird **einmal pro Environment** mit `terraform init/plan/apply`
@@ -106,11 +121,15 @@ hinterlegt:
 ```bash
 ENVIRONMENTS=(dev test prod)
 declare -A AWS_PROFILES=(
-  [dev]="hsr_dev"
-  [test]="hsr_test"
-  [prod]="hsr_prod"
+  [dev]="<aws-profile-dev>"
+  [test]="<aws-profile-test>"
+  [prod]="<aws-profile-prod>"
 )
 ```
+
+**Vor der ersten Nutzung ausfüllen:** die drei Platzhalter durch eure
+tatsächlichen lokalen AWS-Profilnamen ersetzen (siehe
+[Voraussetzungen](#voraussetzungen)).
 
 Die Profile müssen lokal in `~/.aws/config`/`~/.aws/credentials` existieren
 und Berechtigung haben, einen IAM OIDC Provider, eine IAM-Rolle samt
@@ -180,8 +199,8 @@ jeweilige Szenario (gh.com oder GHES) eintragen.
 |---|---|
 | `environment` | `dev`, `test` oder `prod` – bestimmt u. a. den Namen des Infrastructure-State-Buckets (`infra-state-<environment>-<account-id>`). Wird von den Skripten automatisch als `TF_VAR_environment` gesetzt. |
 | `enable_versioning` | Versioning für den Infrastructure-State-Bucket an/aus |
-| `github_owner` | GitHub-Benutzer- oder Organisationsname |
-| `github_repo` | GitHub-Repository-Name |
+| `github_owner` | GitHub-Benutzer- oder Organisationsname. **Pflichtfeld, kein Default** – wird von `bootstrap.sh` automatisch gesetzt (siehe [Automatische Ermittlung](#automatische-ermittlung)) |
+| `github_repo` | GitHub-Repository-Name. **Pflichtfeld, kein Default** – wird von `bootstrap.sh` automatisch gesetzt |
 | `github_branch` | Branch, für den die Rolle per Trust-Policy erlaubt ist |
 | `github_owner_id` | Immutable Owner-ID (nur gh.com) |
 | `github_repo_id` | Immutable Repo-ID (nur gh.com) |
@@ -249,7 +268,7 @@ komplette Schleife:
 
 ```bash
 cd terraform/bootstrap
-export AWS_PROFILE=hsr_dev
+export AWS_PROFILE=<aws-profile-dev>
 export TF_VAR_environment=dev
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 terraform init \

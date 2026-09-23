@@ -14,7 +14,7 @@ provider "aws" {
 }
 
 resource "aws_s3_bucket" "oidc_test" {
-  bucket_prefix = "marcus-oidc-test-"
+  bucket_prefix = "oidc-test-"
 
   tags = {
     Name      = "GitHub OIDC Terraform Test"

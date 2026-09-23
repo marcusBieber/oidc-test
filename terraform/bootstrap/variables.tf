@@ -15,15 +15,13 @@ variable "environment" {
 }
 
 variable "github_owner" {
-  description = "GitHub Benutzer- oder Organisationsname"
+  description = "GitHub Benutzer- oder Organisationsname. Kein Default (Pflichtfeld) - wird von bootstrap.sh automatisch per GitHub CLI gesetzt, oder manuell in terraform.tfvars eintragen."
   type        = string
-  default     = "marcusBieber"
 }
 
 variable "github_repo" {
-  description = "GitHub Repository-Name"
+  description = "GitHub Repository-Name. Kein Default (Pflichtfeld) - wird von bootstrap.sh automatisch per GitHub CLI gesetzt, oder manuell in terraform.tfvars eintragen."
   type        = string
-  default     = "oidc-test"
 }
 
 variable "github_branch" {

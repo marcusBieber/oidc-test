@@ -9,9 +9,11 @@ Je AWS-Account/Environment gibt es ein eigenes Unterverzeichnis:
 - `hsr-dev/`, `hsr-test/`, `hsr-prod/` – identischer Inhalt, nur der
   Backend-Bucket in `backend.tf` unterscheidet sich (`infra-state-dev-<account-id>`,
   `infra-state-test-<account-id>`, `infra-state-prod-<account-id>` – die
-  Account-ID macht den global eindeutigen S3-Bucket-Namen kollisionsfrei
-  und muss nach dem Bootstrap einmalig manuell eingetragen werden, siehe
-  [`bootstrap/README.md`](bootstrap/README.md)).
+  Account-ID macht den global eindeutigen S3-Bucket-Namen kollisionsfrei).
+  **Die drei `<AWS_ACCOUNT_ID_...>`-Platzhalter in den jeweiligen
+  `backend.tf` müssen nach dem Bootstrap einmalig manuell durch die echten
+  Account-IDs ersetzt werden** – vollständige Platzhalter-Checkliste in
+  [`bootstrap/README.md`](bootstrap/README.md#platzhalter-die-vor-der-nutzung-ausgefüllt-werden-müssen).
 - `bootstrap/` – das Bootstrap-Modul, siehe
   [`bootstrap/README.md`](bootstrap/README.md).
 
