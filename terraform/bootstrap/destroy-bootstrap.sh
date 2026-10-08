@@ -10,9 +10,9 @@ REGION="eu-central-1"
 # Muss zu bootstrap.sh passen (gleiche Environments/Profile).
 ENVIRONMENTS=(dev test prod)
 declare -A AWS_PROFILES=(
-  [dev]="hsr-1-dev"
-  [test]="hsr-1-tst"
-  [prod]="hsr-1-prd"
+  [dev]="hsr-2-dev"
+  [test]="hsr-2-tst"
+  [prod]="hsr-2-prd"
 )
 
 # --------------------------------------------------
@@ -193,6 +193,10 @@ delete_bucket_with_retry() {
 
 destroy_environment() {
   local env="$1"
+    if [[ ! -v "AWS_PROFILES[$env]" ]]; then
+    echo "FEHLER: Kein AWS-Profil für Environment '${env}' konfiguriert."
+    return 1
+  fi
   local profile="${AWS_PROFILES[${env}]}"
 
   echo
@@ -204,7 +208,21 @@ destroy_environment() {
   export TF_VAR_environment="${env}"
 
   echo "Aktuelle AWS Identität:"
-  aws sts get-caller-identity
+    if ! aws sts get-caller-identity >/dev/null 2>&1; then
+    echo "AWS Credentials ungültig oder abgelaufen."
+    echo "Starte AWS SSO Login für Profil: ${profile}"
+
+    aws sso login --profile "${profile}"
+
+    echo "Prüfe AWS Identität erneut..."
+
+    if ! aws sts get-caller-identity; then
+      echo "FEHLER: AWS Login war nicht erfolgreich."
+      return 1
+    fi
+  else
+    aws sts get-caller-identity
+  fi
 
   local account_id
   account_id=$(aws sts get-caller-identity --query Account --output text)
@@ -277,7 +295,10 @@ echo "- IAM Role und zugehörige Bootstrap-Ressourcen"
 echo "- Infrastructure-State-Bucket"
 echo "- Bootstrap-State-Bucket inklusive aller Versionen"
 echo
-echo "Betroffene AWS-Profile: ${AWS_PROFILES[dev]}, ${AWS_PROFILES[test]}, ${AWS_PROFILES[prod]}"
+echo "Betroffene AWS-Profile:"
+for env in "${ENVIRONMENTS[@]}"; do
+  echo "- ${env}: ${AWS_PROFILES[$env]}"
+done
 echo
 echo "Die eigentliche Infrastructure (terraform/hsr-*) sollte vorher bereits"
 echo "separat zerstört worden sein."
